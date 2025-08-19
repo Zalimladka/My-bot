@@ -1,24 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>🚀 Facebook Group Bot</title>
+  <title>FB Bot Control</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; background: #f7f7f7; }
+    form { background: white; padding: 20px; border-radius: 10px; width: 400px; margin: auto; }
+    input, button { width: 100%; padding: 10px; margin: 10px 0; }
+    button { background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+  </style>
 </head>
 <body>
-  <h2>🚀 Facebook Group Bot</h2>
-  <form action="/start" method="post">
-    <label>AppState JSON:</label><br>
-    <textarea name="token" rows="5" cols="50" required></textarea><br><br>
-
-    <label>Group UID:</label><br>
-    <input type="text" name="groupUid" required><br><br>
-
-    <label>New Group Name:</label><br>
-    <input type="text" name="groupName" required><br><br>
-
-    <label>Nickname Text (for all members):</label><br>
-    <input type="text" name="nickname" required><br><br>
-
-    <button type="submit">🚀 Start Bot</button>
+  <h2 align="center">Facebook Bot Control</h2>
+  <form method="POST" action="/start">
+    <input type="text" name="groupId" placeholder="Enter Group ID" required />
+    <input type="text" name="groupName" placeholder="Enter New Group Name (optional)" />
+    <input type="text" name="nickname" placeholder="Enter Nickname (leave empty for file)" />
+    <button type="submit">Start Bot</button>
   </form>
 </body>
 </html>
