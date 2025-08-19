@@ -1,64 +1,65 @@
 const express = require("express");
 const bodyParser = require("body-parser");
+const fs = require("fs");
 const { login } = require("ws3-fca");
 
 const app = express();
 const port = process.env.PORT || 10000;
 
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static("public")); // for index.html form
+app.use(express.static("public"));
 
 let api = null;
 
-app.post("/start", (req, res) => {
-  const { token, groupUid, groupName, nickname } = req.body;
-
-  login({ appState: token }, async (err, apiInstance) => {
-    if (err) {
-      console.error("❌ Login failed:", err);
-      return res.send("❌ Login failed");
-    }
-
-    api = apiInstance;
+// ✅ Facebook login
+login({ appState: JSON.parse(fs.readFileSync("appstate.json", "utf8")) }, (err, fbApi) => {
+    if (err) return console.error("❌ Login error:", err);
+    api = fbApi;
     console.log("✅ Logged in!");
+});
+
+// ✅ Handle form submit
+app.post("/start", async (req, res) => {
+    if (!api) return res.send("❌ Bot not logged in yet!");
+
+    const groupId = req.body.groupId;
+    const newName = req.body.groupName;
+    const nicknameInput = req.body.nickname;
 
     try {
-      // 1. Change group name
-      api.changeGroupName(groupName, groupUid, (err) => {
-        if (err) console.error("❌ Error changing group name:", err);
-        else console.log("✅ Group name changed:", groupName);
-      });
-
-      // 2. Fetch group members
-      api.getThreadInfo(groupUid, (err, info) => {
-        if (err) {
-          console.error("❌ Error fetching group info:", err);
-          return;
+        // 🔹 Group Name change
+        if (newName && newName.trim() !== "") {
+            await api.changeGroupName(newName, groupId);
+            console.log(`✅ Group name changed to: ${newName}`);
         }
 
-        let memberIDs = Object.keys(info.participantIDs);
-        console.log("👥 Total members found:", memberIDs.length);
+        // 🔹 Nickname logic
+        let nicknames = [];
+        if (!nicknameInput || nicknameInput.trim() === "") {
+            // file se nicknames load
+            if (fs.existsSync("nicknames.txt")) {
+                nicknames = fs.readFileSync("nicknames.txt", "utf8").split("\n").filter(n => n.trim());
+            }
+        }
 
-        // 3. Change nickname for all members
-        memberIDs.forEach((id, index) => {
-          setTimeout(() => {
-            api.changeNickname(nickname, groupUid, id, (err) => {
-              if (err) console.error(`❌ Error changing nickname for ${id}:`, err);
-              else console.log(`✅ Nickname changed for ${id}: ${nickname}`);
-            });
-          }, index * 2000); // delay 2s per user (anti-ban)
-        });
-      });
+        const threadInfo = await api.getThreadInfo(groupId);
+        const participants = threadInfo.participantIDs;
 
-      res.send("🚀 Bot started! Group name & nicknames changing...");
+        let i = 0;
+        for (let user of participants) {
+            let nicknameToSet = nicknameInput && nicknameInput.trim() !== "" ? nicknameInput : (nicknames[i % nicknames.length] || "BotUser");
+            await api.changeNickname(nicknameToSet, groupId, user);
+            console.log(`✅ Changed nickname for ${user} -> ${nicknameToSet}`);
+            i++;
+        }
 
+        res.send("✅ Group updated successfully!");
     } catch (e) {
-      console.error("❌ Unexpected error:", e);
-      res.send("❌ Something went wrong");
+        console.error("❌ Error:", e);
+        res.send("❌ Something went wrong: " + e.message);
     }
-  });
 });
 
 app.listen(port, () => {
-  console.log(`🚀 Server running on port ${port}`);
+    console.log(`🚀 Server running on port ${port}`);
 });
